@@ -93,11 +93,17 @@ const hex=u=>[...u].map(x=>x.toString(16).padStart(2,'0')).join('');
 async function dkey(pw,salt,it){const k=await crypto.subtle.importKey('raw',te.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:it,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 async function seal(obj,pw,id){const salt=rnd(16),iv=rnd(12),it=300000;const raw=await pipe(te.encode(JSON.stringify(obj)),CompressionStream);const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await dkey(pw,salt,it),raw));return b64(te.encode(JSON.stringify({v:1,id,i:it,s:b64(salt),n:b64(iv),c:b64(ct)})))}
 async function unseal(meta,pw){const raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(meta.n)},await dkey(pw,unb64(meta.s),meta.i),unb64(meta.c)));return JSON.parse(td.decode(await pipe(raw,DecompressionStream)))}
+const EC={name:'ECDH',namedCurve:'P-256'},AES={name:'AES-GCM',length:256};
+async function newKeys(){const k=await crypto.subtle.generateKey(EC,true,['deriveKey']),j=await crypto.subtle.exportKey('jwk',k.privateKey);return{pub:b64(new Uint8Array(await crypto.subtle.exportKey('raw',k.publicKey))),priv:[j.x,j.y,j.d].join('.')}}
+async function encTo(pub,obj){const e=await crypto.subtle.generateKey(EC,true,['deriveKey']),pk=await crypto.subtle.importKey('raw',unb64(pub),EC,false,[]),key=await crypto.subtle.deriveKey({name:'ECDH',public:pk},e.privateKey,AES,false,['encrypt']),iv=rnd(12),raw=await pipe(te.encode(JSON.stringify(obj)),CompressionStream),ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,raw));return b64(new Uint8Array(await crypto.subtle.exportKey('raw',e.publicKey)))+'.'+b64(iv)+'.'+b64(ct)}
+async function decWith(priv,pkt){const[x,y,d]=priv.split('.'),[e,iv,ct]=pkt.split('.'),sk=await crypto.subtle.importKey('jwk',{kty:'EC',crv:'P-256',x,y,d,ext:true},EC,false,['deriveKey']),pk=await crypto.subtle.importKey('raw',unb64(e),EC,false,[]),key=await crypto.subtle.deriveKey({name:'ECDH',public:pk},sk,AES,false,['decrypt']),raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(iv)},key,unb64(ct)));return JSON.parse(td.decode(await pipe(raw,DecompressionStream)))}
 /* router */
 let ctx=null;
-function route(){const h=location.hash.slice(1)||'/';setTheme('love');
+function navReplay(on){$('#nav').innerHTML=on?'<button class="ghost" id="nrp" type="button" style="min-height:38px;padding:6px 16px">↻ Replay</button>':'';if(on)$('#nrp').onclick=()=>{ctx.i=0;play('idle')}}
+function route(){const h=location.hash.slice(1)||'/';setTheme('love');navReplay(false);
   if(h.startsWith('/g/'))return recipient(h.slice(3));
   if(h.startsWith('/manage/'))return manage(h.slice(8));
+  if(h.startsWith('/reply/'))return replyRoute(h.slice(7));
   home();}
 addEventListener('hashchange',route);
 const machine=()=>`<svg viewBox="0 0 240 300" role="img" aria-label="Capsule machine"><g class="globe"><circle cx="120" cy="100" r="80" fill="var(--lav)" opacity=".55" stroke="var(--ink)" stroke-width="3"/>${[[85,120,'#E3B4B6'],[125,135,'#fff'],[160,115,'var(--a)'],[100,80,'#fff'],[145,75,'#E3B4B6'],[120,105,'var(--a)'],[80,95,'#CFC8E4']].map(c=>`<circle cx="${c[0]}" cy="${c[1]}" r="17" fill="${c[2]}" stroke="var(--ink)" stroke-width="2.5"/><path d="M${c[0]-17} ${c[1]}h34" stroke="var(--ink)" stroke-width="2"/>`).join('')}</g><rect x="52" y="172" width="136" height="100" rx="16" fill="var(--seal)" stroke="var(--ink)" stroke-width="3"/><rect x="62" y="182" width="116" height="10" rx="5" fill="#fff" opacity=".35"/><path d="M96 240h48v28H96z" fill="var(--ink)"/><g class="handle"><circle cx="120" cy="212" r="17" fill="var(--card)" stroke="var(--ink)" stroke-width="3"/><rect x="113" y="196" width="14" height="22" rx="5" fill="var(--gold)" stroke="var(--ink)" stroke-width="2"/></g><path d="M70 272v14M170 272v14" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/></svg>`;
@@ -127,10 +133,10 @@ function home(){
     if(p1.length<6)return err.textContent='Use a password with at least 6 characters.';
     if(p1!==p2)return err.textContent='The two passwords do not match.';
     const b=$('#gen');b.disabled=true;b.textContent='Locking…';
-    try{const id=hex(rnd(8)),token=hex(rnd(24)),messages=ms.map((text,i)=>({id:'m'+(i+1)+'-'+hex(rnd(3)),order:i,text}));
-      const data=await seal({recipient:st.recipient.trim(),sender:st.sender.trim(),title:st.title.trim(),theme:st.theme,messages},p1,id);
-      store.set('kc:m:'+token,{id,title:st.title,messages});
-      done(location.href.split('#')[0]+'#/g/'+data,location.href.split('#')[0]+'#/manage/'+token,messages.length,st.theme);
+    try{const id=hex(rnd(8)),kp=await newKeys(),messages=ms.map((text,i)=>({id:'m'+(i+1)+'-'+hex(rnd(3)),order:i,text}));
+      const data=await seal({recipient:st.recipient.trim(),sender:st.sender.trim(),title:st.title.trim(),theme:st.theme,pk:kp.pub,messages},p1,id);
+      store.set('kc:k:'+id,kp.priv);
+      done(location.href.split('#')[0]+'#/g/'+data,location.href.split('#')[0]+'#/manage/'+id+'.'+kp.priv,messages.length,st.theme);
     }catch(e){err.textContent='Could not create the link in this browser. Try a current version of Chrome, Safari or Firefox.';b.disabled=false;b.textContent='Generate link'}};
   list();
 }
@@ -140,7 +146,7 @@ function done(link,mlink,n,theme){setTheme(theme);
   <p class="note" style="margin-top:18px">Anyone who has this link can try to unlock it. The messages are encrypted, but the link itself is not secret.</p>
   <hr style="border:0;border-top:1px dashed var(--line);margin:20px 0"><h3>Your private reply inbox</h3><p class="note">Keep this separate link to yourself. It is not your recipient's password and can't be worked out from the share link.</p>
   <div class="linkbox"><input readonly value="${esc(mlink)}" aria-label="Creator link"></div><div class="row" style="justify-content:center"><a class="btn ghost" href="${esc(mlink)}" target="_blank" rel="noopener">Open inbox</a><a class="btn ghost" href="#/" onclick="setTimeout(route,0)">Make another</a></div>
-  <p class="note">Prototype note: replies are simulated in this browser's storage, so the inbox only shows replies made on this device. A real version needs a server and database.</p></div>`;
+  <p class="note"><b>How replies reach you:</b> after the last capsule, your recipient gets a reply link to send back to you. Open it on any device (it asks for this inbox link if needed). Save this inbox link somewhere safe: it is the only key that can read replies.</p></div>`;
   $('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(link)}catch(e){$('#lk').select();document.execCommand('copy')}toast('Link copied')};
   $('#sh').onclick=()=>navigator.share?navigator.share({title:'A little surprise for you',url:link}).catch(()=>{}):$('#cp').click();}
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),1800)}
@@ -155,12 +161,12 @@ function recipient(payload){let meta;
   $('#un').onclick=go;pw.addEventListener('keydown',e=>e.key==='Enter'&&go());pw.focus();}
 function broken(){app.innerHTML=`<div class="paper center" style="max-width:460px;margin:30px auto"><h2>This capsule box seems to be empty.</h2><p>The link may be incomplete or damaged. Ask the sender to send it again, or make a new one.</p><a class="btn" href="#/" onclick="setTimeout(route,0)">Create a new one</a></div>`}
 const rkey=()=>'kc:r:'+ctx.id, replies=()=>store.get(rkey())||{};
-function intro(){const d=ctx.d;setTheme(d.theme);
+function intro(){const d=ctx.d;setTheme(d.theme);navReplay(true);
   app.innerHTML=`<div class="paper center pop" style="max-width:460px;margin:30px auto"><h2>A little surprise${d.recipient?' for '+esc(d.recipient):' for you'}.</h2><p>${d.sender?esc(d.sender)+' left':'Someone left'} a few things inside. Ready to open them?</p>${d.title?`<p class="note">${esc(d.title)}</p>`:''}<button id="o">Open the machine</button></div>`;
   $('#o').onclick=()=>{ctx.i=0;play('idle')}}
 function play(stage){const d=ctx.d,n=d.messages.length,m=d.messages[ctx.i],rp=replies(),g=THEMES[d.theme].g;
   const dots=`<div class="dots" role="img" aria-label="${Object.keys(rp).length} of ${n} capsules opened">${d.messages.map(x=>`<span class="${rp[x.id]?'on':''}"></span>`).join('')}</div>`;
-  if(stage==='idle'){app.innerHTML=`<div class="center"><div class="stage" id="st">${machine()}</div>${dots}<p>Capsule ${ctx.i+1} / ${n}</p><button id="t">Turn the handle</button></div>`;
+  if(stage==='idle'){app.innerHTML=`<div class="center"><div class="stage" id="st">${machine()}</div>${dots}<p>Capsule ${ctx.i+1} / ${n}</p><button id="t">Turn the handle</button>${Object.keys(rp).length?'<div class="row" style="justify-content:center"><button class="ghost" id="sb2">Send replies so far</button></div><div id="sb" style="max-width:520px;margin:14px auto"></div>':''}</div>`;$('#sb2')&&($('#sb2').onclick=()=>sendPanel($('#sb')));
     $('#t').onclick=()=>{$('#t').disabled=true;$('#st').classList.add('turn');setTimeout(()=>play('ready'),950)}}
   else if(stage==='ready'){app.innerHTML=`<div class="center"><div class="stage">${machine()}<button class="cap drop" id="cp" aria-label="Open capsule"><i class="t"></i><i class="b"></i></button></div>${dots}<p>A capsule dropped out!</p><button id="oc">Open capsule</button></div>`;
     const open=()=>{const c=$('#cp');c.classList.remove('drop');c.classList.add('shake');setTimeout(()=>{c.classList.remove('shake');c.classList.add('open');setTimeout(()=>play('reveal'),650)},520)};
@@ -174,12 +180,25 @@ function play(stage){const d=ctx.d,n=d.messages.length,m=d.messages[ctx.i],rp=re
       sv.onclick=()=>{const t=ta.value.trim();if(!t)return;try{const r=replies();if(!r[m.id])r[m.id]={text:t,at:new Date().toISOString()};store.set(rkey(),r);advance()}catch(e){$('#err').textContent='Could not save your reply. Please try again.'}}}}
 }
 function advance(){if(ctx.i>=ctx.d.messages.length-1)return fin();ctx.i++;play('idle')}
-function fin(){app.innerHTML=`<div class="paper center pop" style="max-width:460px;margin:30px auto"><div style="font-size:42px">${THEMES[ctx.d.theme].g}</div><h2>You found everything.</h2><p>Someone clearly had a lot to tell you. ♡</p><p class="note">All ${ctx.d.messages.length} messages have a reply.</p><button id="rpl">Replay</button></div>`;$('#rpl').onclick=()=>{ctx.i=0;play('idle')}}
+function fin(){app.innerHTML=`<div class="paper center pop" style="max-width:520px;margin:30px auto"><div style="font-size:42px">${THEMES[ctx.d.theme].g}</div><h2>You found everything.</h2><p>Last step: send your replies back${ctx.d.sender?' to '+esc(ctx.d.sender):''}.</p><div id="sb"></div><div class="row" style="justify-content:center"><button class="ghost" id="rpl">Replay</button></div></div>`;$('#rpl').onclick=()=>{ctx.i=0;play('idle')};sendPanel($('#sb'))}
+async function sendPanel(el){const d=ctx.d,rp=replies();el.innerHTML='<p class="note">Preparing your reply link…</p>';
+  try{if(!d.pk)throw 0;const items=d.messages.filter(x=>rp[x.id]).map(x=>({o:x.order,m:x.text,r:rp[x.id].text,t:rp[x.id].at})),link=location.href.split('#')[0]+'#/reply/'+ctx.id+'/'+await encTo(d.pk,{id:ctx.id,items});
+    el.innerHTML=`<p>Send this link to ${esc(d.sender||'the sender')}. Only they can read your replies.</p><div class="linkbox"><input readonly value="${esc(link)}" aria-label="Reply link"></div><div class="row" style="justify-content:center"><button id="rc2">Copy reply link</button><button class="ghost" id="rs2">Share</button></div>`;
+    $('#rc2').onclick=async()=>{try{await navigator.clipboard.writeText(link)}catch(e){el.querySelector('input').select();document.execCommand('copy')}toast('Reply link copied')};
+    $('#rs2').onclick=()=>navigator.share?navigator.share({title:'My replies',url:link}).catch(()=>{}):$('#rc2').click()}
+  catch(e){el.innerHTML='<p class="err">Could not prepare the reply link. This box may have been made with an older version.</p>'}}
 /* CREATOR INBOX */
-function manage(token){const m=/^[0-9a-f]{48}$/.test(token)&&store.get('kc:m:'+token);
-  if(!m){app.innerHTML=`<div class="paper center" style="max-width:460px;margin:30px auto"><h2>Inbox not found.</h2><p>In this prototype the inbox only opens in the browser where the gacha was created.</p></div>`;return}
-  const r=store.get('kc:r:'+m.id)||{},got=Object.keys(r).length;
-  app.innerHTML=`<h2>Reply inbox${m.title?': '+esc(m.title):''}</h2><p class="note">${got} of ${m.messages.length} capsules replied to.</p>`+m.messages.map((x,i)=>`<div class="paper" style="margin:12px 0"><b>Capsule ${i+1}</b> <span class="note">· ${r[x.id]?'Completed · '+new Date(r[x.id].at).toLocaleString():'Waiting'}</span><p class="m" style="white-space:pre-wrap">${esc(x.text)}</p>${r[x.id]?`<div class="card" style="padding:12px"><div class="to">Their reply</div><p class="m" style="margin:0">${esc(r[x.id].text)}</p></div>`:'<p class="note">No reply yet.</p>'}</div>`).join('')}
+async function importPacket(id,priv,pkt){const o=await decWith(priv,pkt);if(o.id!==id)throw 0;const inb=store.get('kc:in:'+id)||{};o.items.forEach(x=>inb[x.o]=x);store.set('kc:in:'+id,inb)}
+function manage(token){const m=token.match(/^([0-9a-f]{16})\.([\w-]+)\.([\w-]+)\.([\w-]+)$/);
+  if(!m){app.innerHTML=`<div class="paper center" style="max-width:460px;margin:30px auto"><h2>Inbox link is incomplete.</h2><p>Use the full private inbox link you got when you created the gacha.</p></div>`;return}
+  const priv=[m[2],m[3],m[4]].join('.');store.set('kc:k:'+m[1],priv);showInbox(m[1],priv)}
+function showInbox(id,priv,msg){const its=Object.values(store.get('kc:in:'+id)||{}).sort((a,b)=>a.o-b.o);
+  app.innerHTML=`<h2>Reply inbox</h2><p class="note">${its.length} repl${its.length==1?'y':'ies'} received. Decrypted in your browser with your private key.</p><p class="err" id="err" role="alert">${esc(msg||'')}</p>`+(its.length?its.map(x=>`<div class="paper" style="margin:12px 0"><b>Capsule ${x.o+1}</b> <span class="note">· ${new Date(x.t).toLocaleString()}</span><p style="white-space:pre-wrap">${esc(x.m)}</p><div class="card" style="padding:12px"><div class="to">Their reply</div><p class="m" style="margin:0">${esc(x.r)}</p></div></div>`).join(''):'<div class="paper"><p>No replies yet. When your recipient finishes, they send you a reply link. Open it, or paste it below.</p></div>')+`<div class="paper" style="margin:12px 0"><label for="pl" style="margin-top:0">Paste a reply link</label><input id="pl"><button id="im" style="margin-top:10px">Add replies</button></div>`;
+  $('#im').onclick=async()=>{const m=$('#pl').value.match(/#\/reply\/([0-9a-f]{16})\/([\w.-]+)/);if(!m||m[1]!==id)return $('#err').textContent='That is not a reply link for this gacha.';try{await importPacket(id,priv,m[2]);showInbox(id,priv)}catch(e){$('#err').textContent='This reply link could not be read with your key.'}}}
+async function replyRoute(rest){const m=rest.match(/^([0-9a-f]{16})\/([\w.-]+)$/);if(!m)return broken();const id=m[1],pkt=m[2],priv=store.get('kc:k:'+id);
+  if(priv){try{await importPacket(id,priv,pkt);return showInbox(id,priv)}catch(e){return showInbox(id,priv,'That reply link could not be read with this key.')}}
+  app.innerHTML=`<div class="paper center" style="max-width:520px;margin:30px auto"><h2>Open your replies</h2><p>Paste your private inbox link to read them.</p><input id="ib" aria-label="Inbox link"><p class="err" id="err" role="alert"></p><button id="ob">Open replies</button></div>`;
+  $('#ob').onclick=async()=>{const t=$('#ib').value.match(/#\/manage\/([0-9a-f]{16})\.([\w-]+)\.([\w-]+)\.([\w-]+)/);if(!t||t[1]!==id)return $('#err').textContent='This inbox link does not match these replies.';const pv=[t[2],t[3],t[4]].join('.');try{await importPacket(id,pv,pkt);store.set('kc:k:'+id,pv);showInbox(id,pv)}catch(e){$('#err').textContent='This inbox link could not open these replies.'}}}
 route();
 </script>
 </body>
