@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kokoro Capsule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F3EBDD;--card:#FBF6EC;--ink:#3A2E34;--soft:#7A6A70;--rose:#E3B4B6;--seal:#A83E4A;--lav:#CFC8E4;--gold:#B8963E;--a:#C9707C;--line:#DCCFBB;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#2A2227;--card:#362C32;--ink:#F1E6D8;--soft:#B8A7AB;--line:#4B3E45;--lav:#5A5273}}
+:root[data-theme="dark"]{--paper:#2A2227;--card:#362C32;--ink:#F1E6D8;--soft:#B8A7AB;--line:#4B3E45;--lav:#5A5273}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 "Zen Maru Gothic","Hiragino Maru Gothic ProN",system-ui,sans-serif;background-image:repeating-linear-gradient(0deg,transparent 0 31px,rgba(150,120,90,.07) 31px 32px)}
+h1,h2,h3{font-family:"Shippori Mincho","Hiragino Mincho ProN",Georgia,serif;line-height:1.2;margin:0 0 .5em}
+h1{font-size:clamp(2.2rem,8vw,3.6rem)}h2{font-size:1.6rem}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 18px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:6px 0 18px;font-family:"Shippori Mincho",serif;font-weight:700}
+.seal{display:inline-grid;place-items:center;width:30px;height:30px;background:var(--seal);color:#fff;border-radius:6px;margin-right:8px;font-size:15px;transform:rotate(-6deg)}
+button,.btn{font:inherit;cursor:pointer;border:0;border-radius:999px;padding:12px 22px;min-height:46px;background:var(--seal);color:#fff;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button.ghost,.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+input,textarea,select{font:inherit;width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+textarea{resize:vertical;min-height:84px}
+label{display:block;font-weight:700;font-size:.9rem;margin:14px 0 5px}
+.paper{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 2px 0 var(--line)}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:30px;align-items:center;padding:20px 0 40px}
+.hero p{font-size:1.1rem;color:var(--soft);max-width:34ch}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:10px 0 40px}
+.steps div{border-left:3px solid var(--rose);padding:4px 14px}
+.steps b{font-family:"Shippori Mincho",serif}
+.editor{display:grid;grid-template-columns:1.2fr .8fr;gap:22px;align-items:start}
+.msg{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+.msg .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--soft);margin-top:4px;gap:6px}
+.msg .bar button{padding:4px 10px;min-height:34px;font-size:.85rem}
+.pv{position:sticky;top:12px}
+.note{font-size:.85rem;color:var(--soft)}
+.err{color:var(--seal);font-weight:700;min-height:1.4em}
+.center{text-align:center}
+.card{background:var(--card);border:1.5px solid var(--line);border-top:6px solid var(--a);border-radius:6px 6px 16px 16px;padding:22px;text-align:left;box-shadow:0 8px 24px rgba(60,40,50,.12)}
+.card .to{font-family:"Shippori Mincho",serif;font-weight:700;color:var(--a);margin-bottom:6px}
+.card p.m{white-space:pre-wrap;word-break:break-word;font-size:1.08rem;margin:0 0 10px}
+.linkbox{display:flex;gap:8px}.linkbox input{font-size:.8rem}
+.stage{max-width:420px;margin:0 auto;position:relative}
+.stage svg{width:100%;height:auto;display:block}
+.handle{transform-origin:120px 212px;transform-box:view-box}
+.turn .handle{animation:spin .9s ease-in-out}
+.turn .globe{animation:wob .9s ease-in-out}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes wob{30%{transform:translateX(-3px)}60%{transform:translateX(3px)}}
+.cap{position:relative;width:84px;height:84px;margin:-10px auto 0;display:block;background:none;padding:0;border-radius:50%}
+.cap i{position:absolute;left:0;width:100%;height:50%;background:var(--a);transition:transform .55s cubic-bezier(.3,1.6,.5,1)}
+.cap i.t{top:0;border-radius:42px 42px 0 0}
+.cap i.b{bottom:0;background:var(--lav);border-radius:0 0 42px 42px}
+.cap.drop{animation:drop .8s cubic-bezier(.3,1.5,.5,1)}
+.cap.shake{animation:shk .5s}
+.cap.open i.t{transform:translateY(-34px) rotate(-18deg)}.cap.open i.b{transform:translateY(34px) rotate(14deg)}
+@keyframes drop{from{transform:translateY(-120px);opacity:0}to{transform:none;opacity:1}}
+@keyframes shk{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+.dots{display:flex;gap:6px;justify-content:center;margin:12px 0}.dots span{width:10px;height:10px;border-radius:50%;background:var(--line)}.dots span.on{background:var(--a)}
+.pop{animation:pop .5s cubic-bezier(.3,1.4,.5,1)}
+@keyframes pop{from{transform:scale(.8) translateY(20px);opacity:0}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;z-index:9}
+@media(max-width:760px){.hero,.editor{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.pv{position:static}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><span><span class="seal" aria-hidden="true">心</span>Kokoro Capsule</span><span id="nav"></span></div>
+  <main id="app" aria-live="polite"></main>
+</div>
+<script>
+"use strict";
+const $=(s,r=document)=>r.querySelector(s), app=$('#app');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const THEMES={friends:{n:'Best friends',a:'#6F9BC4',g:'★'},love:{n:'Love',a:'#C9707C',g:'♡'},thanks:{n:'Appreciation',a:'#6FA283',g:'✿'},birthday:{n:'Birthday',a:'#D39B2E',g:'✦'},because:{n:'Just because',a:'#8E80BE',g:'☾'}};
+const setTheme=t=>document.documentElement.style.setProperty('--a',(THEMES[t]||THEMES.love).a);
+/* storage (simulated backend) */
+const mem={};
+const store={get(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return mem[k]||null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){mem[k]=v}}};
+/* crypto */
+const te=new TextEncoder(),td=new TextDecoder();
+const b64=u=>{let s='';u.forEach(x=>s+=String.fromCharCode(x));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const unb64=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return Uint8Array.from(atob(s),c=>c.charCodeAt(0))};
+const pipe=async(d,S)=>new Uint8Array(await new Response(new Blob([d]).stream().pipeThrough(new S('deflate-raw'))).arrayBuffer());
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+const hex=u=>[...u].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function dkey(pw,salt,it){const k=await crypto.subtle.importKey('raw',te.encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:it,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function seal(obj,pw,id){const salt=rnd(16),iv=rnd(12),it=300000;const raw=await pipe(te.encode(JSON.stringify(obj)),CompressionStream);const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await dkey(pw,salt,it),raw));return b64(te.encode(JSON.stringify({v:1,id,i:it,s:b64(salt),n:b64(iv),c:b64(ct)})))}
+async function unseal(meta,pw){const raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(meta.n)},await dkey(pw,unb64(meta.s),meta.i),unb64(meta.c)));return JSON.parse(td.decode(await pipe(raw,DecompressionStream)))}
+/* router */
+let ctx=null;
+function route(){const h=location.hash.slice(1)||'/';setTheme('love');
+  if(h.startsWith('/g/'))return recipient(h.slice(3));
+  if(h.startsWith('/manage/'))return manage(h.slice(8));
+  home();}
+addEventListener('hashchange',route);
+const machine=()=>`<svg viewBox="0 0 240 300" role="img" aria-label="Capsule machine"><g class="globe"><circle cx="120" cy="100" r="80" fill="var(--lav)" opacity=".55" stroke="var(--ink)" stroke-width="3"/>${[[85,120,'#E3B4B6'],[125,135,'#fff'],[160,115,'var(--a)'],[100,80,'#fff'],[145,75,'#E3B4B6'],[120,105,'var(--a)'],[80,95,'#CFC8E4']].map(c=>`<circle cx="${c[0]}" cy="${c[1]}" r="17" fill="${c[2]}" stroke="var(--ink)" stroke-width="2.5"/><path d="M${c[0]-17} ${c[1]}h34" stroke="var(--ink)" stroke-width="2"/>`).join('')}</g><rect x="52" y="172" width="136" height="100" rx="16" fill="var(--seal)" stroke="var(--ink)" stroke-width="3"/><rect x="62" y="182" width="116" height="10" rx="5" fill="#fff" opacity=".35"/><path d="M96 240h48v28H96z" fill="var(--ink)"/><g class="handle"><circle cx="120" cy="212" r="17" fill="var(--card)" stroke="var(--ink)" stroke-width="3"/><rect x="113" y="196" width="14" height="22" rx="5" fill="var(--gold)" stroke="var(--ink)" stroke-width="2"/></g><path d="M70 272v14M170 272v14" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/></svg>`;
+/* HOME / CREATOR */
+function home(){
+  const st={recipient:'',sender:'',title:'',theme:'love',msgs:['','']};
+  app.innerHTML=`<section class="hero"><div><h1>Send a little surprise.</h1><p>Fill tiny capsules with the things you never quite know how to say.</p><div class="row"><a class="btn" href="#make" id="go">Make a Message Gacha</a><a class="btn ghost" href="#how">How it works</a></div></div><div class="stage" aria-hidden="true">${machine()}</div></section>
+  <section id="how" class="steps"><div><b>Write</b><br>Up to 10 messages, one per capsule.</div><div><b>Share</b><br>One link, locked with your password.</div><div><b>Reveal</b><br>They turn the handle, read, and reply.</div></section>
+  <section id="make"><h2>Make your capsules</h2><div class="editor"><div class="paper">
+  <label for="rc">Recipient (optional)</label><input id="rc" maxlength="40"><label for="sn">Your name (optional)</label><input id="sn" maxlength="40"><label for="ti">Short title (optional)</label><input id="ti" maxlength="60">
+  <label for="th">Theme</label><select id="th">${Object.entries(THEMES).map(([k,v])=>`<option value="${k}" ${k=='love'?'selected':''}>${v.g} ${v.n}</option>`).join('')}</select>
+  <h3 style="margin-top:22px">Messages <span class="note" id="cnt"></span></h3><div id="msgs"></div><button class="ghost" id="add" type="button">+ Add capsule</button>
+  <h3 style="margin-top:22px">Lock it</h3><label for="p1">Password (6+ characters)</label><input id="p1" type="password" autocomplete="new-password"><label for="p2">Confirm password</label><input id="p2" type="password" autocomplete="new-password">
+  <p class="note">The password is never stored or placed in the link. Anyone with the link can try to guess it, so pick a strong one and don't reuse an account password.</p>
+  <p class="err" id="err" role="alert"></p><button id="gen" type="button">Generate link</button></div>
+  <aside class="pv" aria-label="Live preview"><div class="note" style="margin-bottom:6px">Live preview</div><div class="card" id="pv"></div></aside></div></section>`;
+  const msgsEl=$('#msgs');
+  function pv(){const t=THEMES[st.theme];setTheme(st.theme);$('#pv').innerHTML=`<div class="to">${t.g} For ${esc(st.recipient||'you')}</div><p class="m">${esc(st.msgs.find(m=>m.trim())||'Your first message will appear here.')}</p><div class="note">${esc(st.title||'A little surprise')} · from ${esc(st.sender||'someone who cares')}</div>`;$('#cnt').textContent=`(${st.msgs.length}/10)`;$('#add').disabled=st.msgs.length>=10}
+  function list(){msgsEl.innerHTML=st.msgs.map((m,i)=>`<div class="msg"><label for="m${i}" style="margin:0 0 4px">Capsule ${i+1}</label><textarea id="m${i}" maxlength="500" data-i="${i}">${esc(m)}</textarea><div class="bar"><span id="c${i}">${m.length}/500</span><span><button class="ghost" data-up="${i}" aria-label="Move up" ${i?'':'disabled'}>↑</button> <button class="ghost" data-dn="${i}" aria-label="Move down" ${i<st.msgs.length-1?'':'disabled'}>↓</button> <button class="ghost" data-del="${i}" ${st.msgs.length>1?'':'disabled'}>Delete</button></span></div></div>`).join('');pv()}
+  msgsEl.addEventListener('input',e=>{const i=e.target.dataset.i;if(i==null)return;st.msgs[i]=e.target.value;$('#c'+i).textContent=e.target.value.length+'/500';pv()});
+  msgsEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset,m=st.msgs;
+    if(d.del!=null)m.splice(+d.del,1);else if(d.up!=null){const i=+d.up;[m[i-1],m[i]]=[m[i],m[i-1]]}else if(d.dn!=null){const i=+d.dn;[m[i+1],m[i]]=[m[i],m[i+1]]}list()});
+  $('#add').onclick=()=>{if(st.msgs.length<10){st.msgs.push('');list()}};
+  [['rc','recipient'],['sn','sender'],['ti','title'],['th','theme']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{st[k]=e.target.value;pv()}));
+  $('#gen').onclick=async()=>{const err=$('#err'),p1=$('#p1').value,p2=$('#p2').value,ms=st.msgs.map(m=>m.trim()).filter(Boolean);err.textContent='';
+    if(!ms.length)return err.textContent='Write at least one message.';
+    if(p1.length<6)return err.textContent='Use a password with at least 6 characters.';
+    if(p1!==p2)return err.textContent='The two passwords do not match.';
+    const b=$('#gen');b.disabled=true;b.textContent='Locking…';
+    try{const id=hex(rnd(8)),token=hex(rnd(24)),messages=ms.map((text,i)=>({id:'m'+(i+1)+'-'+hex(rnd(3)),order:i,text}));
+      const data=await seal({recipient:st.recipient.trim(),sender:st.sender.trim(),title:st.title.trim(),theme:st.theme,messages},p1,id);
+      store.set('kc:m:'+token,{id,title:st.title,messages});
+      done(location.href.split('#')[0]+'#/g/'+data,location.href.split('#')[0]+'#/manage/'+token,messages.length,st.theme);
+    }catch(e){err.textContent='Could not create the link in this browser. Try a current version of Chrome, Safari or Firefox.';b.disabled=false;b.textContent='Generate link'}};
+  list();
+}
+function done(link,mlink,n,theme){setTheme(theme);
+  app.innerHTML=`<div class="paper center pop"><h2>Your little surprise is ready! ♡</h2><p>${n} capsule${n>1?'s':''} waiting · 🔒 Password protected</p>
+  <div class="linkbox"><input readonly id="lk" value="${esc(link)}" aria-label="Share link"></div><div class="row" style="justify-content:center"><button id="cp">Copy link</button><button class="ghost" id="sh">Share</button><a class="btn ghost" href="${esc(link)}" target="_blank" rel="noopener">Preview</a></div>
+  <p class="note" style="margin-top:18px">Anyone who has this link can try to unlock it. The messages are encrypted, but the link itself is not secret.</p>
+  <hr style="border:0;border-top:1px dashed var(--line);margin:20px 0"><h3>Your private reply inbox</h3><p class="note">Keep this separate link to yourself. It is not your recipient's password and can't be worked out from the share link.</p>
+  <div class="linkbox"><input readonly value="${esc(mlink)}" aria-label="Creator link"></div><div class="row" style="justify-content:center"><a class="btn ghost" href="${esc(mlink)}" target="_blank" rel="noopener">Open inbox</a><a class="btn ghost" href="#/" onclick="setTimeout(route,0)">Make another</a></div>
+  <p class="note">Prototype note: replies are simulated in this browser's storage, so the inbox only shows replies made on this device. A real version needs a server and database.</p></div>`;
+  $('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(link)}catch(e){$('#lk').select();document.execCommand('copy')}toast('Link copied')};
+  $('#sh').onclick=()=>navigator.share?navigator.share({title:'A little surprise for you',url:link}).catch(()=>{}):$('#cp').click();}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),1800)}
+/* RECIPIENT */
+function recipient(payload){let meta;
+  try{meta=JSON.parse(td.decode(unb64(payload)));if(meta.v!==1||!meta.c||!meta.s||!meta.n||!(meta.i>0&&meta.i<=2e6))throw 0}catch(e){return broken()}
+  app.innerHTML=`<div class="paper center" style="max-width:460px;margin:30px auto"><div style="font-size:42px">🔒</div><h2>This little box is locked.</h2><p>Enter the password to open your capsules.</p><label for="pw" style="text-align:left">Password</label><div class="linkbox"><input id="pw" type="password" autocomplete="off"><button class="ghost" id="eye" type="button" aria-label="Show password">Show</button></div><p class="err" id="err" role="alert"></p><button id="un">Unlock</button></div>`;
+  const pw=$('#pw');$('#eye').onclick=e=>{const s=pw.type==='password';pw.type=s?'text':'password';e.target.textContent=s?'Hide':'Show'};
+  const go=async()=>{const b=$('#un');b.disabled=true;b.textContent='Unlocking…';
+    try{const d=await unseal(meta,pw.value);if(!Array.isArray(d.messages)||!d.messages.length)throw 1;ctx={id:meta.id,d,i:0};pw.value='';intro()}
+    catch(e){$('#err').textContent='That password did not unlock this capsule box.';b.disabled=false;b.textContent='Unlock'}};
+  $('#un').onclick=go;pw.addEventListener('keydown',e=>e.key==='Enter'&&go());pw.focus();}
+function broken(){app.innerHTML=`<div class="paper center" style="max-width:460px;margin:30px auto"><h2>This capsule box seems to be empty.</h2><p>The link may be incomplete or damaged. Ask the sender to send it again, or make a new one.</p><a class="btn" href="#/" onclick="setTimeout(route,0)">Create a new one</a></div>`}
+const rkey=()=>'kc:r:'+ctx.id, replies=()=>store.get(rkey())||{};
+function intro(){const d=ctx.d;setTheme(d.theme);
+  app.innerHTML=`<div class="paper center pop" style="max-width:460px;margin:30px auto"><h2>A little surprise${d.recipient?' for '+esc(d.recipient):' for you'}.</h2><p>${d.sender?esc(d.sender)+' left':'Someone left'} a few things inside. Ready to open them?</p>${d.title?`<p class="note">${esc(d.title)}</p>`:''}<button id="o">Open the machine</button></div>`;
+  $('#o').onclick=()=>{ctx.i=0;play('idle')}}
+function play(stage){const d=ctx.d,n=d.messages.length,m=d.messages[ctx.i],rp=replies(),g=THEMES[d.theme].g;
+  const dots=`<div class="dots" role="img" aria-label="${Object.keys(rp).length} of ${n} capsules opened">${d.messages.map(x=>`<span class="${rp[x.id]?'on':''}"></span>`).join('')}</div>`;
+  if(stage==='idle'){app.innerHTML=`<div class="center"><div class="stage" id="st">${machine()}</div>${dots}<p>Capsule ${ctx.i+1} / ${n}</p><button id="t">Turn the handle</button></div>`;
+    $('#t').onclick=()=>{$('#t').disabled=true;$('#st').classList.add('turn');setTimeout(()=>play('ready'),950)}}
+  else if(stage==='ready'){app.innerHTML=`<div class="center"><div class="stage">${machine()}<button class="cap drop" id="cp" aria-label="Open capsule"><i class="t"></i><i class="b"></i></button></div>${dots}<p>A capsule dropped out!</p><button id="oc">Open capsule</button></div>`;
+    const open=()=>{const c=$('#cp');c.classList.remove('drop');c.classList.add('shake');setTimeout(()=>{c.classList.remove('shake');c.classList.add('open');setTimeout(()=>play('reveal'),650)},520)};
+    $('#oc').onclick=open;$('#cp').onclick=open}
+  else{const saved=rp[m.id],last=ctx.i===n-1;
+    app.innerHTML=`<div class="center">${dots}<p>Capsule ${ctx.i+1} / ${n} · ${n-ctx.i-1} remaining</p></div><div class="card pop" style="max-width:520px;margin:0 auto"><div class="to">${g} For ${esc(d.recipient||'you')}</div><p class="m">${esc(m.text)}</p>
+    ${saved?`<div class="note">Your reply</div><p class="m" style="font-size:.95rem">${esc(saved.text)}</p><div class="row"><button id="nx">${last?'Finish':'Get another capsule'}</button></div>`:
+    `<label for="rp" style="margin-top:6px">Write your reply</label><textarea id="rp" maxlength="500" placeholder="Say something back…"></textarea><p class="err" id="err" role="alert"></p><button id="sv" disabled>Reply &amp; open next</button>`}</div>`;
+    if(saved)$('#nx').onclick=advance;
+    else{const ta=$('#rp'),sv=$('#sv');ta.oninput=()=>sv.disabled=!ta.value.trim();
+      sv.onclick=()=>{const t=ta.value.trim();if(!t)return;try{const r=replies();if(!r[m.id])r[m.id]={text:t,at:new Date().toISOString()};store.set(rkey(),r);advance()}catch(e){$('#err').textContent='Could not save your reply. Please try again.'}}}}
+}
+function advance(){if(ctx.i>=ctx.d.messages.length-1)return fin();ctx.i++;play('idle')}
+function fin(){app.innerHTML=`<div class="paper center pop" style="max-width:460px;margin:30px auto"><div style="font-size:42px">${THEMES[ctx.d.theme].g}</div><h2>You found everything.</h2><p>Someone clearly had a lot to tell you. ♡</p><p class="note">All ${ctx.d.messages.length} messages have a reply.</p><button id="rpl">Replay</button></div>`;$('#rpl').onclick=()=>{ctx.i=0;play('idle')}}
+/* CREATOR INBOX */
+function manage(token){const m=/^[0-9a-f]{48}$/.test(token)&&store.get('kc:m:'+token);
+  if(!m){app.innerHTML=`<div class="paper center" style="max-width:460px;margin:30px auto"><h2>Inbox not found.</h2><p>In this prototype the inbox only opens in the browser where the gacha was created.</p></div>`;return}
+  const r=store.get('kc:r:'+m.id)||{},got=Object.keys(r).length;
+  app.innerHTML=`<h2>Reply inbox${m.title?': '+esc(m.title):''}</h2><p class="note">${got} of ${m.messages.length} capsules replied to.</p>`+m.messages.map((x,i)=>`<div class="paper" style="margin:12px 0"><b>Capsule ${i+1}</b> <span class="note">· ${r[x.id]?'Completed · '+new Date(r[x.id].at).toLocaleString():'Waiting'}</span><p class="m" style="white-space:pre-wrap">${esc(x.text)}</p>${r[x.id]?`<div class="card" style="padding:12px"><div class="to">Their reply</div><p class="m" style="margin:0">${esc(r[x.id].text)}</p></div>`:'<p class="note">No reply yet.</p>'}</div>`).join('')}
+route();
+</script>
+</body>
+</html>
